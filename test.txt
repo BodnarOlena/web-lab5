@@ -1,0 +1,50 @@
+# Запуск сервера
+node main.js -h 127.0.0.1 -p 3000 -c ./cache
+
+# Перевірка параметрів командного рядка (код виходу має бути 1)
+node main.js
+echo $?
+node main.js -h 127.0.0.1 -p abc -c ./cache
+echo $?
+
+# GET: картинки немає в кеші (X-Image-Source: http.cat)
+rm -f cache/*
+curl -s -D - -o /tmp/cat418.jpg http://127.0.0.1:3000/418
+file /tmp/cat418.jpg
+ls -l cache
+
+# GET: повторний запит (X-Image-Source: cache)
+curl -s -D - -o /dev/null http://127.0.0.1:3000/418
+
+# Час відповіді: промах і влучання
+rm -f cache/404.jpg
+curl -s -o /dev/null -w "miss: %{time_total} s\n" http://127.0.0.1:3000/404
+curl -s -o /dev/null -w "hit:  %{time_total} s\n" http://127.0.0.1:3000/404
+
+# GET: картинки немає ні в кеші, ні на http.cat (404)
+curl -i http://127.0.0.1:3000/999
+
+# PUT: власна картинка в тілі запиту (201)
+cp cache/418.jpg /tmp/mycat.jpg
+curl -i -X PUT --data-binary @/tmp/mycat.jpg -H "Content-Type: image/jpeg" http://127.0.0.1:3000/200
+
+# GET після PUT: повертається наша картинка з кешу
+curl -s -D - -o /tmp/got.jpg http://127.0.0.1:3000/200
+cmp /tmp/mycat.jpg /tmp/got.jpg && echo "файли однакові"
+
+# PUT: заміна наявної картинки (201)
+curl -i -X PUT --data-binary @/tmp/mycat.jpg http://127.0.0.1:3000/200
+
+# PUT: порожнє тіло (400)
+curl -i -X PUT http://127.0.0.1:3000/200
+
+# DELETE: видалення картинки (200) і повторне видалення (404)
+curl -i -X DELETE http://127.0.0.1:3000/200
+curl -i -X DELETE http://127.0.0.1:3000/200
+
+# Недозволений метод (405, заголовок Allow)
+curl -i -X POST http://127.0.0.1:3000/200
+
+# Некоректний шлях (404)
+curl -i http://127.0.0.1:3000/abc
+curl -i http://127.0.0.1:3000/
