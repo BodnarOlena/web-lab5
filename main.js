@@ -86,6 +86,15 @@ async function writeCacheFile(filePath, data) {
   }
 }
 
+// Збирає тіло запиту цілком у Buffer через промісний інтерфейс потоку
+async function readBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 async function handleGet(code, req, res) {
   const filePath = cacheFilePath(code);
 
@@ -126,7 +135,15 @@ async function handleGet(code, req, res) {
 }
 
 async function handlePut(code, req, res) {
-  sendText(res, 501, 'PUT ще не реалізовано');
+  const body = await readBody(req);
+
+  if (body.length === 0) {
+    return sendText(res, 400, 'Тіло запиту порожнє: передайте картинку в тілі PUT');
+  }
+
+  // Наявну картинку замінюємо, нової створюємо; байти зберігаються без змін
+  await writeCacheFile(cacheFilePath(code), body);
+  sendText(res, 201, `Картинку для коду ${code} збережено в кеш`);
 }
 
 async function handleDelete(code, req, res) {
