@@ -1,0 +1,275 @@
+{
+  "info": {
+    "_postman_id": "b1763b5d-043d-4239-a4f0-88540e66d4ee",
+    "name": "Lab5 caching proxy",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "60049298",
+    "_collection_link": "https://go.postman.co/collection/60049298-b1763b5d-043d-4239-a4f0-88540e66d4ee?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01 GET image (cache miss)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 200\", () => pm.response.to.have.status(200));\r\npm.test(\"Content-Type: image/jpeg\", () =>\r\n  pm.response.to.have.header(\"Content-Type\", \"image/jpeg\"));\r\npm.test(\"Джерело картинки: http.cat\", () =>\r\n  pm.response.to.have.header(\"X-Image-Source\", \"http.cat\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/418",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "418"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "02 GET image (cache hit)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 200\", () => pm.response.to.have.status(200));\r\npm.test(\"Content-Type: image/jpeg\", () =>\r\n  pm.response.to.have.header(\"Content-Type\", \"image/jpeg\"));\r\npm.test(\"Джерело картинки: cache\", () =>\r\n  pm.response.to.have.header(\"X-Image-Source\", \"cache\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/418",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "418"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "03 PUT own image",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 201\", () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "file",
+          "file": {
+            "src": "postman/my-pic.jpg"
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/200",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "200"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "04 GET after PUT",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 200\", () => pm.response.to.have.status(200));\r\npm.test(\"Content-Type: image/jpeg\", () =>\r\n  pm.response.to.have.header(\"Content-Type\", \"image/jpeg\"));\r\npm.test(\"Це моя картинка з кешу, а не з http.cat\", () =>\r\n  pm.response.to.have.header(\"X-Image-Source\", \"cache\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/200",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "200"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "05 DELETE image",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/200",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "200"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "06 DELETE missing image",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 404\", () => pm.response.to.have.status(404));\r\npm.test(\"Текстове повідомлення про помилку\", () =>\r\n  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/plain\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/200",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "200"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "07 GET unknown code",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 404\", () => pm.response.to.have.status(404));\r\npm.test(\"Текстове повідомлення про помилку\", () =>\r\n  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/plain\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/999",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "999"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "08 POST not allowed",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 405\", () => pm.response.to.have.status(405));\r\npm.test(\"Заголовок Allow\", () =>\r\n  pm.response.to.have.header(\"Allow\", \"GET, PUT, DELETE\"));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/200",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "200"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "09 DELETE cleanup",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/418",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "418"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": ""
+    }
+  ]
+}
