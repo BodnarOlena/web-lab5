@@ -1,8 +1,12 @@
 import { Command, InvalidArgumentError } from 'commander';
+import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
+import superagent from 'superagent';
+
+const CAT_URL = 'https://http.cat';
 
 // Перетворює рядок порту на число й відхиляє некоректні значення
 function parsePort(value) {
@@ -43,6 +47,16 @@ function sendText(res, status, message, headers = {}) {
   res.end(`${message}\n`);
 }
 
+// Відповідь із картинкою; source показує, звідки її взято
+function sendImage(res, image, source) {
+  res.writeHead(200, {
+    'Content-Type': 'image/jpeg',
+    'Content-Length': image.length,
+    'X-Image-Source': source,
+  });
+  res.end(image);
+}
+
 // Повертає код зі шляху виду /200 або null, якщо шлях некоректний
 function parseStatusCode(rawUrl) {
   const { pathname } = new URL(rawUrl, 'http://localhost');
@@ -50,9 +64,65 @@ function parseStatusCode(rawUrl) {
   return match ? match[1] : null;
 }
 
-// Заглушки: кожен метод буде реалізовано окремим комітом
+// Шлях до файлу кешу для заданого коду
+function cacheFilePath(code) {
+  return path.join(cacheDir, `${code}.jpg`);
+}
+
+// Атомарний запис: спочатку тимчасовий файл, потім перейменування,
+// тому в кеші ніколи не буде наполовину записаного файлу
+async function writeCacheFile(filePath, data) {
+  const tmpPath = `${filePath}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(tmpPath, data);
+    await rename(tmpPath, filePath);
+  } catch (err) {
+    try {
+      await unlink(tmpPath);
+    } catch {
+      // тимчасового файлу може вже не бути
+    }
+    throw err;
+  }
+}
+
 async function handleGet(code, req, res) {
-  sendText(res, 501, 'GET ще не реалізовано');
+  const filePath = cacheFilePath(code);
+
+  // 1. Спроба взяти картинку з кешу
+  let cached = null;
+  try {
+    cached = await readFile(filePath);
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+  if (cached) {
+    return sendImage(res, cached, 'cache');
+  }
+
+  // 2. Промах кешу: запит до http.cat
+  let image;
+  try {
+    const response = await superagent
+      .get(`${CAT_URL}/${code}`)
+      .buffer(true)
+      .parse(superagent.parse.image)
+      .timeout({ response: 5000, deadline: 15000 });
+    image = response.body;
+  } catch (err) {
+    if (err.status) {
+      return sendText(res, 404, `Картинку для коду ${code} не знайдено на http.cat (статус ${err.status})`);
+    }
+    return sendText(res, 404, `Не вдалося отримати картинку з http.cat: ${err.message}`);
+  }
+
+  if (!Buffer.isBuffer(image) || image.length === 0) {
+    return sendText(res, 404, 'http.cat повернув порожню відповідь');
+  }
+
+  // 3. Спочатку зберігаємо в кеш, потім віддаємо клієнтові
+  await writeCacheFile(filePath, image);
+  return sendImage(res, image, 'http.cat');
 }
 
 async function handlePut(code, req, res) {
