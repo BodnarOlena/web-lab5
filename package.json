@@ -9,5 +9,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "commander": "^15.1.0",
+    "superagent": "^10.4.2"
+  }
 }
